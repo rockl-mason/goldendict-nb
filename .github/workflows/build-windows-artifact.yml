@@ -78,9 +78,9 @@ jobs:
           package_base="$(basename "$(ls ./build_dir/*.7z | head -n 1)" .7z)"
           prefix="${ARTIFACT_PREFIX}"
 
+          cp "./build_dir/goldendict/goldendict.exe" "./build_dir/${prefix}-portable.exe"
           mv "./build_dir/${package_base}.7z" "./build_dir/${prefix}-installer.7z"
           mv "./build_dir/${package_base}.exe" "./build_dir/${prefix}-installer.exe"
-          mv "./build_dir/goldendict/goldendict.exe" "./build_dir/${prefix}-portable.exe"
 
           portable_dir="./build_dir/${prefix}-portable"
           mkdir -p "${portable_dir}"
