@@ -8,6 +8,7 @@
 
 #include "mainwindow.hh"
 #include "logger.hh"
+#include "webshellbridge.hh"
 #include "webshellwindow.hh"
 #include <QWebEngineProfile>
 #include "edit_dictionaries.hh"
