@@ -2050,7 +2050,8 @@ void ArticleView::updateSearchPanelState( const QWebEngineFindTextResult & resul
     return;
   }
 
-  const int activeMatch = std::max( 1, result.activeMatch() );
+  const int currentActiveMatch = result.activeMatch();
+  const int activeMatch        = currentActiveMatch > 0 ? currentActiveMatch : 1;
   searchPanel->statusLabel->setText( searchStatusMessage( activeMatch, result.numberOfMatches() ) );
   searchPanel->previous->setEnabled( true );
   searchPanel->next->setEnabled( true );

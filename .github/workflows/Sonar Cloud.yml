@@ -16,6 +16,8 @@ jobs:
   build:
     name: Build and analyze
     runs-on: ubuntu-24.04
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:            
       - name: ubuntu install thirdparty dependencies
         run: |
@@ -45,10 +47,14 @@ jobs:
         run: |
           mkdir build_dir
           cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -S . -B build_dir -G Ninja
+      - name: Skip SonarCloud when token is not configured
+        if: ${{ env.SONAR_TOKEN == '' }}
+        run: |
+          echo "SONAR_TOKEN is not configured for this fork. Skipping SonarCloud scan."
+          exit 0
       - name: SonarQube Scan
+        if: ${{ env.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarqube-scan-action@v6.0.0
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
             --define "sonar.cfamily.compile-commands=build_dir/compile_commands.json"
