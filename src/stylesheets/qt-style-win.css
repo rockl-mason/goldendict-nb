@@ -7,15 +7,17 @@ QTabBar::close-button:hover {
 
 #groupListToolbar {
   border: 0px;
+  padding-right: 28px;
 }
 
 #groupListToolbar::drop-down {
   border: 0px;
   background: transparent;
+  width: 24px;
 }
 
 #groupListToolbar::down-arrow {
   image: url(:/icons/1downarrow.svg);
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }

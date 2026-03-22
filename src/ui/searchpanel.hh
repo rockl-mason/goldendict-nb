@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QCheckBox>
@@ -11,6 +12,7 @@ class SearchPanel: public QWidget
 public:
   explicit SearchPanel( QWidget * parent = nullptr );
   QLineEdit * lineEdit;
+  QLabel * statusLabel;
   QPushButton * close;
   QPushButton * previous;
   QPushButton * next;

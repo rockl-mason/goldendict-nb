@@ -40,6 +40,7 @@
 #include <QWebEngineContextMenuRequest>
 #include <QWebEngineFindTextResult>
 #include <QStyleHints>
+#include <algorithm>
 #include <utility>
 #ifdef Q_OS_WIN32
   #include <windows.h>
@@ -113,6 +114,8 @@ ArticleView::ArticleView( QWidget * parent,
   currentGroupId( currentGroupId_ ),
   translateLine( translateLine_ )
 {
+  setObjectName( "articleView" );
+
   // setup GUI
   webview = new ArticleWebView( this );
   webview->setPopup( popupView );
@@ -121,16 +124,24 @@ ArticleView::ArticleView( QWidget * parent,
   searchPanel->hide();
   ftsSearchPanel->hide();
   // Layout
+  auto * articleChrome       = new QWidget( this );
+  auto * articleChromeLayout = new QVBoxLayout( articleChrome );
+  articleChrome->setObjectName( "articleChrome" );
+  articleChromeLayout->setContentsMargins( 0, 0, 0, 0 );
+  articleChromeLayout->setSpacing( 10 );
+  articleChromeLayout->addWidget( searchPanel );
+  articleChromeLayout->addWidget( ftsSearchPanel );
+  articleChromeLayout->addWidget( webview, 1 );
+
   auto * mainLayout = new QVBoxLayout( this );
-  mainLayout->addWidget( webview );
-  mainLayout->addWidget( ftsSearchPanel );
-  mainLayout->addWidget( searchPanel );
+  const int outerMargin = popupView ? 6 : 12;
+  mainLayout->setContentsMargins( outerMargin, outerMargin, outerMargin, outerMargin );
+  mainLayout->setSpacing( 0 );
+  mainLayout->addWidget( articleChrome );
 
   webview->setSizePolicy( QSizePolicy::Expanding, QSizePolicy::Expanding );
   ftsSearchPanel->setSizePolicy( QSizePolicy::Expanding, QSizePolicy::Minimum );
   searchPanel->setSizePolicy( QSizePolicy::Expanding, QSizePolicy::Minimum );
-
-  mainLayout->setContentsMargins( 0, 0, 0, 0 );
 
   // end UI setup
 
@@ -140,8 +151,11 @@ ArticleView::ArticleView( QWidget * parent,
   connect( searchPanel->caseSensitive, &QCheckBox::toggled, this, &ArticleView::on_searchCaseSensitive_clicked );
   connect( searchPanel->lineEdit, &QLineEdit::textEdited, this, &ArticleView::on_searchText_textEdited );
   connect( searchPanel->lineEdit, &QLineEdit::returnPressed, this, &ArticleView::on_searchText_returnPressed );
+  connect( ftsSearchPanel->close, &QPushButton::clicked, this, &ArticleView::on_searchCloseButton_clicked );
   connect( ftsSearchPanel->next, &QPushButton::clicked, this, &ArticleView::on_ftsSearchNext_clicked );
   connect( ftsSearchPanel->previous, &QPushButton::clicked, this, &ArticleView::on_ftsSearchPrevious_clicked );
+
+  resetSearchPanelState();
 
   //
 
@@ -2022,6 +2036,41 @@ void ArticleView::moveOneArticleDown()
   }
 }
 
+void ArticleView::resetSearchPanelState( const QString & message )
+{
+  searchPanel->statusLabel->setText( message.isEmpty() ? tr( "Find in current entry" ) : message );
+  searchPanel->previous->setEnabled( false );
+  searchPanel->next->setEnabled( false );
+}
+
+void ArticleView::updateSearchPanelState( const QWebEngineFindTextResult & result )
+{
+  if ( result.numberOfMatches() == 0 ) {
+    resetSearchPanelState( searchStatusMessageNoMatches() );
+    return;
+  }
+
+  const int activeMatch = std::max( 1, result.activeMatch() );
+  searchPanel->statusLabel->setText( searchStatusMessage( activeMatch, result.numberOfMatches() ) );
+  searchPanel->previous->setEnabled( true );
+  searchPanel->next->setEnabled( true );
+}
+
+QString ArticleView::preferredSearchText()
+{
+  const QString selectedText = webview->selectedText().trimmed();
+  if ( !selectedText.isEmpty() ) {
+    return selectedText;
+  }
+
+  const QString word = getWord().trimmed();
+  if ( !word.isEmpty() ) {
+    return word;
+  }
+
+  return getTitle().trimmed();
+}
+
 void ArticleView::openSearch()
 {
   if ( !isVisible() ) {
@@ -2034,7 +2083,11 @@ void ArticleView::openSearch()
 
   if ( !searchPanel->isVisible() ) {
     searchPanel->show();
-    searchPanel->lineEdit->setText( getTitle() );
+
+    const QString seedText = preferredSearchText();
+    if ( !seedText.isEmpty() ) {
+      searchPanel->lineEdit->setText( seedText );
+    }
   }
 
   searchPanel->lineEdit->setFocus();
@@ -2046,6 +2099,11 @@ void ArticleView::openSearch()
   }
 
   Utils::Widget::setNoResultColor( searchPanel->lineEdit, false );
+  resetSearchPanelState();
+
+  if ( !searchPanel->lineEdit->text().trimmed().isEmpty() ) {
+    performFindOperation( false );
+  }
 }
 
 void ArticleView::on_searchPrevious_clicked()
@@ -2132,7 +2190,14 @@ void ArticleView::doubleClicked( QPoint pos )
 
 void ArticleView::performFindOperation( bool backwards )
 {
-  QString text = searchPanel->lineEdit->text();
+  QString text = searchPanel->lineEdit->text().trimmed();
+
+  if ( text.isEmpty() ) {
+    webview->findText( "" );
+    Utils::Widget::setNoResultColor( searchPanel->lineEdit, false );
+    resetSearchPanelState();
+    return;
+  }
 
   QWebEnginePage::FindFlags f( 0 );
 
@@ -2144,20 +2209,20 @@ void ArticleView::performFindOperation( bool backwards )
     f |= QWebEnginePage::FindBackward;
   }
 
-  findText( text, f, [ text, this ]( bool match ) {
-    bool nomatch = !text.isEmpty() && !match;
+  findText( text, f, [ this ]( const QWebEngineFindTextResult & result ) {
+    bool nomatch = result.numberOfMatches() == 0;
     Utils::Widget::setNoResultColor( searchPanel->lineEdit, nomatch );
+    updateSearchPanelState( result );
   } );
 }
 
 void ArticleView::findText( QString & text,
                             const QWebEnginePage::FindFlags & f,
-                            const std::function< void( bool match ) > & callback )
+                            const std::function< void( const QWebEngineFindTextResult & result ) > & callback )
 {
   webview->findText( text, f, [ callback ]( const QWebEngineFindTextResult & result ) {
-    auto r = result.numberOfMatches() > 0;
     if ( callback ) {
-      callback( r );
+      callback( result );
     }
   } );
 }
@@ -2168,6 +2233,7 @@ bool ArticleView::closeSearch()
   if ( searchPanel->isVisible() ) {
     searchPanel->hide();
     webview->setFocus();
+    resetSearchPanelState();
 
     return true;
   }
@@ -2179,6 +2245,9 @@ bool ArticleView::closeSearch()
     webview->setFocus();
 
     webview->findText( "" );
+    ftsSearchPanel->statusLabel->setText( tr( "Browse full-text matches" ) );
+    ftsSearchPanel->next->setEnabled( false );
+    ftsSearchPanel->previous->setEnabled( false );
     return true;
   }
   return false;

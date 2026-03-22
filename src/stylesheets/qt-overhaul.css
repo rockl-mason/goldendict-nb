@@ -1,0 +1,179 @@
+QMainWindow#MainWindow,
+QWidget#appShell {
+  background: #f3f6fb;
+}
+
+QToolBar#navToolbar {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  spacing: 6px;
+  padding: 6px;
+}
+
+QToolBar#navToolbar QToolButton {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 8px;
+  margin: 0 1px;
+}
+
+QToolBar#navToolbar QToolButton:hover,
+QToolBar#navToolbar QToolButton:checked {
+  background: #eef4fb;
+  border-color: #d3deeb;
+}
+
+QWidget#searchWorkbench {
+  background: #eef4fb;
+  border: 1px solid #dbe5f0;
+  border-radius: 14px;
+}
+
+QComboBox#commandGroupSelector,
+QComboBox#searchDockGroupSelector {
+  background: #ffffff;
+  border: 1px solid #d4deeb;
+  border-radius: 10px;
+  padding: 8px 12px;
+  min-height: 22px;
+}
+
+QWidget#translateBox {
+  background: #ffffff;
+  border: 1px solid #d4deeb;
+  border-radius: 12px;
+}
+
+QLineEdit#translateLine {
+  background: transparent;
+  border: none;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+QListView#translateSuggestions,
+QListWidget#searchSuggestionsList,
+QListWidget#resultsDictionaryList,
+QTreeView#favoritesTreeView,
+QListView#historyListView {
+  background: #ffffff;
+  border: 1px solid #dbe5f0;
+  border-radius: 14px;
+  padding: 6px;
+  outline: none;
+}
+
+QListView#translateSuggestions::item,
+QListWidget#searchSuggestionsList::item,
+QListWidget#resultsDictionaryList::item,
+QTreeView#favoritesTreeView::item,
+QListView#historyListView::item {
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin: 1px 0;
+}
+
+QListView#translateSuggestions::item:selected,
+QListWidget#searchSuggestionsList::item:selected,
+QListWidget#resultsDictionaryList::item:selected,
+QTreeView#favoritesTreeView::item:selected,
+QListView#historyListView::item:selected {
+  background: #e7f0ff;
+  color: #17345f;
+}
+
+QWidget#searchPaneTitleBar,
+QWidget#dictsPaneTitleBar {
+  background: #f8fbff;
+  border-bottom: 1px solid #e2ebf3;
+}
+
+QWidget#workspaceSwitches QToolButton {
+  background: #ffffff;
+  border: 1px solid #d4deeb;
+  border-radius: 10px;
+  padding: 7px;
+}
+
+QWidget#workspaceSwitches QToolButton:hover,
+QWidget#workspaceSwitches QToolButton:checked {
+  background: #e8f1ff;
+  border-color: #afc8eb;
+}
+
+QTabWidget#workspaceTabs::pane {
+  border: none;
+  background: transparent;
+}
+
+QTabBar::tab {
+  background: #e8eef6;
+  border: 1px solid #dbe4ef;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  padding: 9px 14px;
+  margin-right: 4px;
+  color: #526272;
+}
+
+QTabBar::tab:selected {
+  background: #ffffff;
+  color: #17283a;
+}
+
+QWidget#articleChrome {
+  background: #ffffff;
+  border: 1px solid #dce5f0;
+  border-radius: 18px;
+}
+
+QWidget#inlineSearchPanel,
+QWidget#ftsSearchPanel {
+  background: #f7fbff;
+  border: 1px solid #dce8f5;
+  border-radius: 14px;
+}
+
+QLineEdit#inlineSearchField {
+  background: #ffffff;
+  border: 1px solid #d2ddeb;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+QLabel#inlineSearchStatusLabel {
+  color: #5d6f84;
+  font-weight: 600;
+}
+
+QWidget#inlineSearchPanel QPushButton,
+QWidget#ftsSearchPanel QPushButton {
+  background: #ffffff;
+  border: 1px solid #d4deeb;
+  border-radius: 10px;
+  padding: 7px 12px;
+}
+
+QWidget#inlineSearchPanel QPushButton:hover,
+QWidget#ftsSearchPanel QPushButton:hover {
+  background: #eef5ff;
+  border-color: #b6cae7;
+}
+
+QWidget#inlineSearchPanel QPushButton:disabled,
+QWidget#ftsSearchPanel QPushButton:disabled {
+  color: #90a0b1;
+  background: #f4f7fa;
+}
+
+QDockWidget {
+  background: #ffffff;
+}
+
+QDockWidget::title {
+  background: #f8fbff;
+  border-bottom: 1px solid #e2ebf3;
+  padding: 10px 12px;
+}

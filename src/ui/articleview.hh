@@ -6,6 +6,7 @@
 #include <QAction>
 #include <QMap>
 #include <QSet>
+#include <QWebEngineFindTextResult>
 #include <list>
 #include "article_netmgr.hh"
 #include "audio/audioplayerinterface.hh"
@@ -294,7 +295,7 @@ public:
 
   void findText( QString & text,
                  const QWebEnginePage::FindFlags & f,
-                 const std::function< void( bool match ) > & callback = nullptr );
+                 const std::function< void( const QWebEngineFindTextResult & result ) > & callback = nullptr );
 
 signals:
 
@@ -428,6 +429,9 @@ public:
   unsigned getGroup( const QUrl & );
 
 private:
+  void resetSearchPanelState( const QString & message = QString() );
+  void updateSearchPanelState( const QWebEngineFindTextResult & result );
+  QString preferredSearchText();
 
   /// Returns current article in the view, in the form of "gdfrom-xxx" id.
   QString getCurrentArticle();

@@ -15,8 +15,10 @@
 TranslateBox::TranslateBox( QWidget * parent ):
   QWidget( parent ),
   translate_line( new QLineEdit( this ) ),
+  searchAction( nullptr ),
   m_popupEnabled( false )
 {
+  setObjectName( "translateBox" );
   completer = new QCompleter( words, this );
   resize( 200, 90 );
   QSizePolicy sizePolicy( QSizePolicy::Maximum, QSizePolicy::Preferred );
@@ -26,31 +28,43 @@ TranslateBox::TranslateBox( QWidget * parent ):
   translate_line->setObjectName( "translateLine" );
   translate_line->setTextMargins( 0, 0, 0, 0 );
   translate_line->setFrame( false );
-  translate_line->setPlaceholderText( tr( "Type a word or phrase to search dictionaries" ) );
+  translate_line->setClearButtonEnabled( true );
+  translate_line->setPlaceholderText( tr( "Search words, phrases, and examples" ) );
 
   auto layout = new QHBoxLayout( this );
   setLayout( layout );
   layout->setContentsMargins( 0, 0, 0, 0 );
+  layout->setSpacing( 0 );
   layout->addWidget( translate_line );
+
+  searchAction = new QAction( QIcon( ":/icons/system-search.svg" ), tr( "Search" ), this );
+  connect( searchAction, &QAction::triggered, this, &TranslateBox::returnPressed );
 
   dropdown = new QAction( QIcon( ":/icons/1downarrow.svg" ), tr( "Drop-down" ), this );
   connect( dropdown, &QAction::triggered, this, &TranslateBox::rightButtonClicked );
 
+  translate_line->addAction( searchAction, QLineEdit::LeadingPosition );
   translate_line->addAction( dropdown, QLineEdit::TrailingPosition );
-  translate_line->addAction( new QAction( QIcon( ":/icons/system-search.svg" ), "", this ),
-                             QLineEdit::LeadingPosition );
 
   translate_line->setFocusPolicy( Qt::ClickFocus );
 
   translate_line->installEventFilter( this );
 
   translate_line->setCompleter( completer );
+  completer->setCaseSensitivity( Qt::CaseInsensitive );
   completer->setCompletionMode( QCompleter::UnfilteredPopupCompletion );
   completer->setMaxVisibleItems( 16 );
   completer->popup()->setMinimumHeight( 256 );
+  completer->popup()->setObjectName( "translateSuggestions" );
 
   connect( translate_line, &QLineEdit::returnPressed, this, [ this ]() {
     emit returnPressed();
+  } );
+
+  connect( translate_line, &QLineEdit::textEdited, this, [ this ]( const QString & text ) {
+    if ( m_popupEnabled && !text.trimmed().isEmpty() ) {
+      showPopup();
+    }
   } );
 }
 
@@ -110,7 +124,7 @@ void TranslateBox::setNoResults( bool noResults )
 
 void TranslateBox::showPopup()
 {
-  if ( m_popupEnabled ) {
+  if ( m_popupEnabled && !translate_line->text().trimmed().isEmpty() ) {
     completer->popup()->show();
     completer->complete();
   }
@@ -133,6 +147,41 @@ void TranslateBox::rightButtonClicked()
 {
   setPopupEnabled( !m_popupEnabled );
 }
+
+bool TranslateBox::eventFilter( QObject * watched, QEvent * event )
+{
+  if ( watched == translate_line ) {
+    switch ( event->type() ) {
+      case QEvent::FocusIn:
+        if ( m_popupEnabled && !translate_line->text().trimmed().isEmpty() ) {
+          QTimer::singleShot( 0, this, &TranslateBox::showPopup );
+        }
+        break;
+
+      case QEvent::FocusOut:
+        QTimer::singleShot( 0, this, [ this ]() {
+          if ( !translate_line->hasFocus() ) {
+            completer->popup()->hide();
+          }
+        } );
+        break;
+
+      case QEvent::KeyPress: {
+        auto * keyEvent = static_cast< QKeyEvent * >( event );
+        if ( keyEvent->key() == Qt::Key_Escape ) {
+          completer->popup()->hide();
+        }
+        break;
+      }
+
+      default:
+        break;
+    }
+  }
+
+  return QWidget::eventFilter( watched, event );
+}
+
 void TranslateBox::setSizePolicy( QSizePolicy::Policy hor, QSizePolicy::Policy ver )
 {
   setSizePolicy( QSizePolicy( hor, ver ) );

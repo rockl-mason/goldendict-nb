@@ -35,7 +35,10 @@ private slots:
   void rightButtonClicked();
 
 private:
+  bool eventFilter( QObject * watched, QEvent * event ) override;
+
   QLineEdit * translate_line;
+  QAction * searchAction;
   QAction * dropdown;
   bool m_popupEnabled;
   QCompleter * completer;

@@ -207,6 +207,22 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
 #endif
 
   ui.setupUi( this );
+  setObjectName( "MainWindow" );
+  ui.centralWidget->setObjectName( "appShell" );
+  ui.tabWidget->setObjectName( "workspaceTabs" );
+  ui.searchPane->setObjectName( "searchDock" );
+  ui.dictsPane->setObjectName( "resultsDock" );
+  ui.favoritesPane->setObjectName( "favoritesDock" );
+  ui.historyPane->setObjectName( "historyDock" );
+  ui.wordList->setObjectName( "searchSuggestionsList" );
+  ui.dictsList->setObjectName( "resultsDictionaryList" );
+  ui.favoritesTree->setObjectName( "favoritesTreeView" );
+  ui.historyList->setObjectName( "historyListView" );
+
+  if ( auto * shellLayout = qobject_cast< QHBoxLayout * >( ui.centralWidget->layout() ) ) {
+    shellLayout->setContentsMargins( 10, 10, 10, 10 );
+    shellLayout->setSpacing( 10 );
+  }
 
   // Set own gesture recognizers
 #ifndef Q_OS_MAC
@@ -219,6 +235,10 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
   // Make the toolbar
   navToolbar = addToolBar( tr( "&Navigation" ) );
   navToolbar->setObjectName( "navToolbar" );
+  navToolbar->setMovable( false );
+  navToolbar->setFloatable( false );
+  navToolbar->setToolButtonStyle( Qt::ToolButtonIconOnly );
+  navToolbar->setContextMenuPolicy( Qt::PreventContextMenu );
 
   navBack = navToolbar->addAction( QIcon( ":/icons/previous.svg" ), tr( "Back" ) );
   navToolbar->widgetForAction( navBack )->setObjectName( "backButton" );
@@ -227,21 +247,49 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
 
   QWidget * translateBoxWidget     = new QWidget( this );
   QHBoxLayout * translateBoxLayout = new QHBoxLayout( translateBoxWidget );
+  translateBoxWidget->setObjectName( "searchWorkbench" );
   translateBoxWidget->setLayout( translateBoxLayout );
-  translateBoxLayout->setContentsMargins( 0, 0, 0, 0 );
-  translateBoxLayout->setSpacing( 0 );
+  translateBoxLayout->setContentsMargins( 10, 6, 10, 6 );
+  translateBoxLayout->setSpacing( 8 );
 
   // translate box
   groupListInToolbar = new GroupComboBox( navToolbar );
-  groupListInToolbar->setObjectName( "groupListToolbar" );
+  groupListInToolbar->setObjectName( "commandGroupSelector" );
   groupListInToolbar->setSizePolicy( QSizePolicy::Preferred, QSizePolicy::MinimumExpanding );
   groupListInToolbar->setSizeAdjustPolicy( QComboBox::AdjustToContents );
+  groupListInToolbar->setMinimumWidth( 150 );
   translateBoxLayout->addWidget( groupListInToolbar, 0 );
 
   translateBox = new TranslateBox( navToolbar );
   translateBox->setSizePolicy( QSizePolicy::Expanding, QSizePolicy::MinimumExpanding );
   translateBoxLayout->addWidget( translateBox, 1 );
+
+  QWidget * workspaceSwitches    = new QWidget( navToolbar );
+  auto * workspaceSwitchesLayout = new QHBoxLayout( workspaceSwitches );
+  workspaceSwitches->setObjectName( "workspaceSwitches" );
+  workspaceSwitchesLayout->setContentsMargins( 0, 0, 0, 0 );
+  workspaceSwitchesLayout->setSpacing( 6 );
+
+  auto addDockToggleButton = [ workspaceSwitches, workspaceSwitchesLayout ]( QAction * action,
+                                                                              const QString & iconPath,
+                                                                              const QString & objectName ) {
+    action->setIcon( QIcon( iconPath ) );
+    auto * button = new QToolButton( workspaceSwitches );
+    button->setObjectName( objectName );
+    button->setCheckable( true );
+    button->setAutoRaise( true );
+    button->setDefaultAction( action );
+    button->setToolButtonStyle( Qt::ToolButtonIconOnly );
+    workspaceSwitchesLayout->addWidget( button );
+  };
+
+  addDockToggleButton( ui.searchPane->toggleViewAction(), ":/icons/system-search.svg", "toggleSearchDockButton" );
+  addDockToggleButton( ui.dictsPane->toggleViewAction(), ":/icons/book.svg", "toggleResultsDockButton" );
+  addDockToggleButton( ui.favoritesPane->toggleViewAction(), ":/icons/star.svg", "toggleFavoritesDockButton" );
+  translateBoxLayout->addWidget( workspaceSwitches, 0 );
+
   translateBoxToolBarAction = navToolbar->addWidget( translateBoxWidget );
+  navToolbar->widgetForAction( translateBoxToolBarAction )->setObjectName( "searchWorkbenchButton" );
 
   // popup
   navToolbar->addSeparator();
@@ -263,32 +311,14 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
     getCurrentArticleView()->playSound();
   } );
 
-  // zooming
-  // named separator (to be able to hide it via CSS)
-  navToolbar->widgetForAction( navToolbar->addSeparator() )->setObjectName( "separatorBeforeZoom" );
-
   zoomIn = navToolbar->addAction( QIcon( ":/icons/icon32_zoomin.png" ), tr( "Zoom In" ) );
   zoomIn->setShortcuts( QList< QKeySequence >() << QKeySequence::ZoomIn << QKeySequence( "Ctrl+=" ) );
-  navToolbar->widgetForAction( zoomIn )->setObjectName( "zoomInButton" );
 
   zoomOut = navToolbar->addAction( QIcon( ":/icons/icon32_zoomout.png" ), tr( "Zoom Out" ) );
   zoomOut->setShortcut( QKeySequence::ZoomOut );
-  navToolbar->widgetForAction( zoomOut )->setObjectName( "zoomOutButton" );
 
   zoomBase = navToolbar->addAction( QIcon( ":/icons/icon32_zoombase.png" ), tr( "Normal Size" ) );
   zoomBase->setShortcut( QKeySequence( "Ctrl+0" ) );
-  navToolbar->widgetForAction( zoomBase )->setObjectName( "zoomBaseButton" );
-
-  // named separator (to be able to hide it via CSS)
-  navToolbar->widgetForAction( navToolbar->addSeparator() )->setObjectName( "separatorBeforeSave" );
-
-  navToolbar->addAction( ui.saveArticle );
-  navToolbar->widgetForAction( ui.saveArticle )->setObjectName( "saveArticleButton" );
-
-  navToolbar->addAction( ui.print );
-  navToolbar->widgetForAction( ui.print )->setObjectName( "printButton" );
-
-  navToolbar->widgetForAction( navToolbar->addSeparator() )->setObjectName( "separatorBeforeAddToFavorites" );
 
   addToFavorites = navToolbar->addAction( starIcon, tr( "Add current tab to Favorites" ) );
   navToolbar->widgetForAction( addToFavorites )->setObjectName( "addToFavoritesButton" );
@@ -298,7 +328,7 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
 
   beforeOptionsSeparator = navToolbar->addSeparator();
   navToolbar->widgetForAction( beforeOptionsSeparator )->setObjectName( "beforeOptionsSeparator" );
-  beforeOptionsSeparator->setVisible( cfg.preferences.hideMenubar );
+  beforeOptionsSeparator->setVisible( true );
 
   QMenu * buttonMenu = new QMenu( this );
   buttonMenu->addAction( ui.dictionaries );
@@ -324,30 +354,28 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
   menuButton->setFocusPolicy( Qt::NoFocus );
 
   menuButtonAction = navToolbar->addWidget( menuButton );
-  menuButtonAction->setVisible( cfg.preferences.hideMenubar );
+  menuButtonAction->setVisible( true );
 
   // Make the search pane's titlebar
-  //  groupLabel.setText( tr( "Look up in:" ) );
   groupListInDock = new GroupComboBox( &searchPaneTitleBar );
+  groupListInDock->setObjectName( "searchDockGroupSelector" );
+  groupLabel.setText( tr( "Suggestions" ) );
+  groupLabel.setObjectName( "searchRailTitle" );
+  groupListInDock->hide();
 
-  searchPaneTitleBarLayout.setContentsMargins( 3, 5, 3, 5 );
-  //  searchPaneTitleBarLayout.addWidget( &groupLabel );
-  searchPaneTitleBarLayout.addWidget( groupListInDock );
+  searchPaneTitleBarLayout.setContentsMargins( 10, 8, 10, 8 );
+  searchPaneTitleBarLayout.addWidget( &groupLabel );
   searchPaneTitleBarLayout.addStretch();
 
   searchPaneTitleBar.setLayout( &searchPaneTitleBarLayout );
+  searchPaneTitleBar.setObjectName( "searchPaneTitleBar" );
 
   ui.searchPane->setTitleBarWidget( &searchPaneTitleBar );
   connect( ui.searchPane->toggleViewAction(), &QAction::triggered, this, &MainWindow::updateSearchPaneAndBar );
 
-  if ( cfg.preferences.searchInDock ) {
-    groupList     = groupListInDock;
-    translateLine = ui.translateLine;
-  }
-  else {
-    groupList     = groupListInToolbar;
-    translateLine = translateBox->translateLine();
-  }
+  ui.translateLine->hide();
+  groupList     = groupListInToolbar;
+  translateLine = translateBox->translateLine();
   connect( &wordFinder, &WordFinder::updated, this, &MainWindow::prefixMatchUpdated );
   connect( &wordFinder, &WordFinder::finished, this, &MainWindow::prefixMatchFinished );
 
@@ -360,9 +388,9 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
   groupListDefaultFont     = groupList->font();
 
   // Make the dictionaries pane's titlebar
-  foundInDictsLabel.setText( tr( "Found in Dictionaries:" ) );
+  foundInDictsLabel.setText( tr( "Sources" ) );
   dictsPaneTitleBarLayout.addWidget( &foundInDictsLabel );
-  dictsPaneTitleBarLayout.setContentsMargins( 5, 5, 5, 5 );
+  dictsPaneTitleBarLayout.setContentsMargins( 10, 8, 10, 8 );
   dictsPaneTitleBar.setLayout( &dictsPaneTitleBarLayout );
   dictsPaneTitleBar.setObjectName( "dictsPaneTitleBar" );
   ui.dictsPane->setTitleBarWidget( &dictsPaneTitleBar );
@@ -406,7 +434,8 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
     focusTranslateLine();
   } );
   focusTranslateLineAction.setShortcuts( QList< QKeySequence >()
-                                         << QKeySequence( "Alt+D" ) << QKeySequence( "Ctrl+L" ) );
+                                         << QKeySequence( "Alt+D" ) << QKeySequence( "Ctrl+L" )
+                                         << QKeySequence( "Ctrl+K" ) );
 
   addGlobalAction( &focusHeadwordsDlgAction, [ this ]() {
     focusHeadwordsDialog();
@@ -520,11 +549,19 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
   ui.menuView->addAction( &toggleMenuBarAction );
   ui.menuView->addSeparator();
   ui.menuView->addAction( ui.searchPane->toggleViewAction() );
+  ui.searchPane->toggleViewAction()->setText( tr( "&Suggestions" ) );
+  ui.searchPane->toggleViewAction()->setIcon( QIcon( ":/icons/system-search.svg" ) );
   ui.searchPane->toggleViewAction()->setShortcut( QKeySequence( "Ctrl+S" ) );
   ui.menuView->addAction( ui.dictsPane->toggleViewAction() );
+  ui.dictsPane->toggleViewAction()->setText( tr( "&Sources" ) );
+  ui.dictsPane->toggleViewAction()->setIcon( QIcon( ":/icons/book.svg" ) );
   ui.dictsPane->toggleViewAction()->setShortcut( QKeySequence( "Ctrl+R" ) );
   ui.menuView->addAction( ui.favoritesPane->toggleViewAction() );
+  ui.favoritesPane->toggleViewAction()->setText( tr( "&Notebook" ) );
+  ui.favoritesPane->toggleViewAction()->setIcon( blueStarIcon );
   ui.menuView->addAction( ui.historyPane->toggleViewAction() );
+  ui.historyPane->toggleViewAction()->setText( tr( "&Recent" ) );
+  ui.historyPane->toggleViewAction()->setIcon( QIcon( ":/icons/windows-list.svg" ) );
 
   ui.menuView->addSeparator();
   ui.menuView->addAction( dictionaryBar.toggleViewAction() );
@@ -632,10 +669,7 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
   //ui.tabWidget->setCornerWidget( &closeTab, Qt::TopRightCorner );
 
   ui.tabWidget->setMovable( true );
-
-#ifndef Q_OS_WIN32
   ui.tabWidget->setDocumentMode( true );
-#endif
 
   ui.tabWidget->setContextMenuPolicy( Qt::CustomContextMenu );
 
@@ -669,17 +703,10 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
     Help::openHelpWebpage();
   } );
 
-  connect( groupListInDock, &GroupComboBox::currentIndexChanged, this, &MainWindow::currentGroupChanged );
-
   connect( groupListInToolbar, &GroupComboBox::currentIndexChanged, this, &MainWindow::currentGroupChanged );
-
-  connect( ui.translateLine, &QLineEdit::textChanged, this, &MainWindow::translateInputChanged );
 
   connect( translateBox->translateLine(), &QLineEdit::textEdited, this, &MainWindow::translateInputChanged );
 
-  connect( ui.translateLine, &QLineEdit::returnPressed, this, [ this ]() {
-    translateInputFinished( true );
-  } );
   connect( translateBox, &TranslateBox::returnPressed, this, [ this ]() {
     translateInputFinished( true );
   } );
@@ -696,7 +723,6 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
 
   this->installEventFilter( this );
 
-  ui.translateLine->installEventFilter( this );
   translateBox->translateLine()->installEventFilter( this );
 
   ui.wordList->installEventFilter( this );
@@ -712,7 +738,6 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
 
   ui.favoritesTree->installEventFilter( this );
 
-  groupListInDock->installEventFilter( this );
   groupListInToolbar->installEventFilter( this );
 
   connect( &ftsIndexing, &FTS::FtsIndexing::newIndexingName, this, &MainWindow::showFTSIndexingName );
@@ -845,6 +870,16 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
 
   updateSearchPaneAndBar( cfg.preferences.searchInDock );
   ui.searchPane->setVisible( cfg.preferences.searchInDock );
+  ui.searchPane->setMinimumWidth( 280 );
+  ui.dictsPane->setMinimumWidth( 260 );
+  ui.favoritesPane->setMinimumWidth( 260 );
+  ui.historyPane->setMinimumWidth( 260 );
+  setDockOptions( QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks | QMainWindow::GroupedDragging );
+
+  if ( cfg.mainWindowState.isEmpty() || cfg.resetState ) {
+    tabifyDockWidget( ui.favoritesPane, ui.historyPane );
+    ui.favoritesPane->raise();
+  }
 
   QTimer::singleShot( 1000, this, &MainWindow::trayIconUpdateOrInit );
 
@@ -1100,38 +1135,24 @@ void MainWindow::updateSearchPaneAndBar( bool searchInDock )
     removeGroupComboBoxActionsFromDialog( headwordsDlg, groupList );
   }
 
-  if ( searchInDock ) {
-    cfg.preferences.searchInDock = true;
+  cfg.preferences.searchInDock = searchInDock;
 
-    navToolbar->setAllowedAreas( Qt::AllToolBarAreas );
-
-    groupList     = groupListInDock;
-    translateLine = ui.translateLine;
-
-    translateBoxToolBarAction->setVisible( false );
-
-    translateBox->setPopupEnabled( false );
-  }
-  else {
-    cfg.preferences.searchInDock = false;
-
-    // handle the main toolbar, it must not be on the side, since it should
-    // contain the group widget and the translate line. Valid locations: Top and Bottom.
-    navToolbar->setAllowedAreas( Qt::BottomToolBarArea | Qt::TopToolBarArea );
-    if ( toolBarArea( navToolbar ) & ( Qt::LeftToolBarArea | Qt::RightToolBarArea ) ) {
-      if ( toolBarArea( &dictionaryBar ) == Qt::TopToolBarArea ) {
-        insertToolBar( &dictionaryBar, navToolbar );
-      }
-      else {
-        addToolBar( Qt::TopToolBarArea, navToolbar );
-      }
+  // Keep the omnibox toolbar as the single primary input surface.
+  // The dock now acts as a suggestions rail instead of replacing the input.
+  navToolbar->setAllowedAreas( Qt::BottomToolBarArea | Qt::TopToolBarArea );
+  if ( toolBarArea( navToolbar ) & ( Qt::LeftToolBarArea | Qt::RightToolBarArea ) ) {
+    if ( toolBarArea( &dictionaryBar ) == Qt::TopToolBarArea ) {
+      insertToolBar( &dictionaryBar, navToolbar );
     }
-
-    groupList     = groupListInToolbar;
-    translateLine = translateBox->translateLine();
-
-    translateBoxToolBarAction->setVisible( true );
+    else {
+      addToolBar( Qt::TopToolBarArea, navToolbar );
+    }
   }
+  groupList     = groupListInToolbar;
+  translateLine = translateBox->translateLine();
+  translateBoxToolBarAction->setVisible( true );
+  ui.searchPane->setVisible( searchInDock );
+  translateBox->setPopupEnabled( false );
 
   if ( ftsDlg ) {
     addGroupComboBoxActionsToDialog( ftsDlg, groupList );
@@ -1437,6 +1458,11 @@ void MainWindow::updateAppearances( const QString & addonStyle,
     if ( addonCss.open( QFile::ReadOnly ) ) {
       css += addonCss.readAll();
     }
+  }
+
+  QFile overhaulCssFile( ":qt-overhaul.css" );
+  if ( overhaulCssFile.open( QFile::ReadOnly ) ) {
+    css += overhaulCssFile.readAll();
   }
 
 #ifdef Q_OS_WIN32
@@ -2546,15 +2572,8 @@ void MainWindow::handleEsc()
 
 void MainWindow::focusTranslateLine()
 {
-  if ( cfg.preferences.searchInDock ) {
-    if ( ui.searchPane->isFloating() ) {
-      ui.searchPane->activateWindow();
-    }
-  }
-  else {
-    if ( !isActiveWindow() ) {
-      activateWindow();
-    }
+  if ( !isActiveWindow() ) {
+    activateWindow();
   }
 
   translateLine->clearFocus();
@@ -2883,8 +2902,8 @@ void MainWindow::typingEvent( const QString & t )
     }
   }
   else {
-    if ( ( cfg.preferences.searchInDock && ui.searchPane->isFloating() ) || ui.dictsPane->isFloating() ) {
-      ui.searchPane->activateWindow();
+    if ( ui.dictsPane->isFloating() ) {
+      activateWindow();
     }
 
     if ( translateLine->isEnabled() ) {
@@ -3302,8 +3321,8 @@ void MainWindow::toggleMenuBarTriggered( bool announce )
   }
 
   menuBar()->setVisible( !cfg.preferences.hideMenubar );
-  beforeOptionsSeparator->setVisible( cfg.preferences.hideMenubar );
-  menuButtonAction->setVisible( cfg.preferences.hideMenubar );
+  beforeOptionsSeparator->setVisible( true );
+  menuButtonAction->setVisible( true );
 }
 
 void MainWindow::on_clearHistory_triggered()

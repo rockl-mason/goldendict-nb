@@ -1,42 +1,52 @@
 #include "searchpanel.hh"
-#include <QLabel>
-#include <QVBoxLayout>
+#include <QHBoxLayout>
 
 SearchPanel::SearchPanel( QWidget * parent ):
   QWidget( parent )
 {
+  setObjectName( "inlineSearchPanel" );
+
   lineEdit = new QLineEdit( this );
+  lineEdit->setObjectName( "inlineSearchField" );
+  lineEdit->setPlaceholderText( tr( "Find in current entry" ) );
 
   close = new QPushButton( this );
+  close->setObjectName( "inlineSearchCloseButton" );
   close->setIcon( QIcon( ":/icons/closetab.svg" ) );
+  close->setFlat( true );
+  close->setToolTip( tr( "Close find bar" ) );
 
   previous = new QPushButton( this );
+  previous->setObjectName( "inlineSearchPreviousButton" );
   previous->setIcon( QIcon( ":/icons/previous.svg" ) );
-  previous->setText( tr( "&Previous" ) );
+  previous->setText( tr( "Previous" ) );
   previous->setShortcut( QKeySequence( tr( "Ctrl+Shift+G" ) ) );
+  previous->setEnabled( false );
 
   next = new QPushButton( this );
+  next->setObjectName( "inlineSearchNextButton" );
   next->setIcon( QIcon( ":/icons/next.svg" ) );
-  next->setText( tr( "&Next" ) );
+  next->setText( tr( "Next" ) );
   next->setShortcut( QKeySequence( tr( "Ctrl+G" ) ) );
+  next->setEnabled( false );
 
   caseSensitive = new QCheckBox( this );
-  caseSensitive->setText( tr( "&Case Sensitive" ) );
+  caseSensitive->setObjectName( "inlineSearchCaseSensitive" );
+  caseSensitive->setText( tr( "Case sensitive" ) );
 
-  auto * searchLabel = new QLabel( tr( "Find:" ) );
+  statusLabel = new QLabel( tr( "Find in current entry" ), this );
+  statusLabel->setObjectName( "inlineSearchStatusLabel" );
+  statusLabel->setMinimumWidth( 120 );
 
-  auto * editRow = new QHBoxLayout(); // parent will be set in layout->addLayout.
-  editRow->addWidget( searchLabel );
-  editRow->addWidget( lineEdit );
-  editRow->addWidget( close );
+  auto * layout = new QHBoxLayout( this );
+  layout->setContentsMargins( 14, 12, 14, 12 );
+  layout->setSpacing( 10 );
+  layout->addWidget( lineEdit, 1 );
+  layout->addWidget( statusLabel );
+  layout->addWidget( caseSensitive );
+  layout->addWidget( previous );
+  layout->addWidget( next );
+  layout->addWidget( close );
 
-  auto * buttonsRow = new QHBoxLayout();
-  buttonsRow->addWidget( previous );
-  buttonsRow->addWidget( next );
-  buttonsRow->addWidget( caseSensitive );
-  buttonsRow->addStretch();
-
-  auto * layout = new QVBoxLayout( this );
-  layout->addLayout( editRow );
-  layout->addLayout( buttonsRow );
+  setMinimumHeight( 58 );
 }

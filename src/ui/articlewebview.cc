@@ -18,6 +18,7 @@ ArticleWebView::ArticleWebView( QWidget * parent ):
   midButtonPressed( false ),
   selectionBySingleClick( false )
 {
+  setObjectName( "articleWebView" );
   auto page = new ArticleWebPage( this );
   connect( page, &ArticleWebPage::linkClicked, this, &ArticleWebView::linkClicked );
   this->setPage( page );
