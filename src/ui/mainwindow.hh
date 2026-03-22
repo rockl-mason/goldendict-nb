@@ -37,6 +37,7 @@ using std::string;
 using std::vector;
 
 class WebShellWindow;
+class QStackedWidget;
 
 class MainWindow: public QMainWindow
 {
@@ -122,6 +123,7 @@ private:
   QList< QWidget * > mruList;
   QToolButton addTab, *tabListButton;
   QAction * openWebUiPreviewAction = nullptr;
+  QStackedWidget * workspaceStack = nullptr;
   Config::Class & cfg;
   Config::Events configEvents;
   History history;
@@ -262,6 +264,7 @@ private:
   void syncWebShellSuggestions();
   void syncWebShellArticle();
   void syncWebShellState();
+  void syncWebShellStatus( const QString & status );
   QVariantMap makeEmptyWebShellArticle() const;
 
   void errorMessageOnStatusBar( const QString & errStr );
@@ -452,7 +455,7 @@ private slots:
   void storeResourceSavePath( const QString & );
 
   void closeHeadwordsDialog();
-  void showWebUiPreview();
+  void setWebUiMode( bool enabled );
 
   /// Handle translate selected text from ArticleView
   void handleTranslateSelectedText( const QString & word, const QUrl & url, const QString & currentArticle );

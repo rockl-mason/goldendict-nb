@@ -5,17 +5,18 @@
 #include <QWebEngineSettings>
 #include <QWebEngineView>
 #include <QUrl>
+#include <QVBoxLayout>
 
 WebShellWindow::WebShellWindow( QWidget * parent ):
-  QMainWindow( parent )
+  QWidget( parent )
 {
-  setAttribute( Qt::WA_DeleteOnClose, false );
   setObjectName( "webShellWindow" );
-  setWindowTitle( tr( "GoldenDict-ng Web UI Preview" ) );
-  resize( 1560, 980 );
+  auto * layout = new QVBoxLayout( this );
+  layout->setContentsMargins( 0, 0, 0, 0 );
+  layout->setSpacing( 0 );
 
   view_ = new QWebEngineView( this );
-  setCentralWidget( view_ );
+  layout->addWidget( view_ );
 
   channel_ = new QWebChannel( view_->page() );
   bridge_  = new WebShellBridge( channel_ );

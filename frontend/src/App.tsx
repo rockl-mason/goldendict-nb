@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   createDictionaryBridge,
   type ArticlePayload,
@@ -12,6 +12,8 @@ const notebookStats = [
   { label: 'Flashcards', value: '62' },
   { label: 'Today', value: '18' },
 ]
+
+const focusPills = ['Word of the Day', 'Pronunciation', 'Example sentences', 'Notebook sync']
 
 export function App() {
   const [bridge, setBridge] = useState<DictionaryBridge | null>(null)
@@ -45,6 +47,18 @@ export function App() {
     return () => dispose()
   }, [])
 
+  const trendingWords = useMemo(() => {
+    if (suggestions.length > 0) {
+      return suggestions.slice(0, 5)
+    }
+
+    return [
+      { text: 'serendipity', preview: 'lucky discovery by accident', badge: 'Oxford' },
+      { text: 'lexicon', preview: 'the vocabulary of a language', badge: 'Cambridge' },
+      { text: 'mnemonic', preview: 'something that helps you remember', badge: 'Study' },
+    ]
+  }, [suggestions])
+
   function handleSearchChange(value: string) {
     setQuery(value)
     bridge?.search(value)
@@ -70,6 +84,23 @@ export function App() {
           </div>
         </div>
 
+        <section className="panel-card workspace-card">
+          <div className="section-heading">
+            <span className="eyebrow">Workspace</span>
+            <span className={`mode-pill mode-pill--${mode}`}>{mode === 'qt' ? 'Qt live' : 'Browser mock'}</span>
+          </div>
+          <p className="panel-copy">
+            像高质量在线词典一样先聚焦搜索，再把单词本、闪卡和词典来源收进同一个学习工作台。
+          </p>
+          <div className="focus-pill-row">
+            {focusPills.map((pill) => (
+              <span key={pill} className="focus-pill">
+                {pill}
+              </span>
+            ))}
+          </div>
+        </section>
+
         <div className="collection-grid">
           {notebookStats.map((item) => (
             <article key={item.label} className="metric-card">
@@ -81,17 +112,8 @@ export function App() {
 
         <section className="panel-card">
           <div className="section-heading">
-            <span className="eyebrow">Workspace</span>
-            <span className={`mode-pill mode-pill--${mode}`}>{mode === 'qt' ? 'Qt bridge' : 'Browser mock'}</span>
-          </div>
-          <p className="panel-copy">
-            桌面端词典能力保留在 Qt/C++，页面层使用现代 Web UI 统一搜索、词条展示、单词本与闪卡工作流。
-          </p>
-        </section>
-
-        <section className="panel-card">
-          <div className="section-heading">
             <span className="eyebrow">Collections</span>
+            <span className="muted-label">Learning shelves</span>
           </div>
           <div className="collection-list">
             {mockCollections.map((collection) => (
@@ -105,28 +127,36 @@ export function App() {
       </aside>
 
       <main className="content-shell">
-        <header className="hero-panel">
-          <div>
-            <p className="eyebrow">Modern Dictionary Workspace</p>
-            <h2>像优秀在线词典一样清晰，但更适合桌面查词和积累。</h2>
+        <section className="hero-panel">
+          <div className="hero-copy">
+            <p className="eyebrow">Dictionary workspace</p>
+            <h2>Find the word fast, keep the article readable, and turn good entries into study material.</h2>
+            <p className="hero-description">
+              借鉴在线词典的搜索层级和杂志化信息卡片，把桌面词典做成更适合持续积累的工作区。
+            </p>
           </div>
 
-          <div className="hero-actions">
-            <button className="ghost-action" type="button">
-              Import dictionaries
-            </button>
-            <button className="ghost-action" type="button">
-              Review flashcards
-            </button>
+          <div className="hero-utility">
+            <p className="eyebrow">Session status</p>
+            <strong>{status}</strong>
+            <div className="hero-actions">
+              <button className="ghost-action ghost-action--filled" onClick={() => handleLookup(query)} type="button">
+                Search now
+              </button>
+              <button className="ghost-action" type="button">
+                Add flashcard
+              </button>
+            </div>
           </div>
-        </header>
+        </section>
 
         <section className="search-panel">
           <div className="search-frame">
-            <span className="search-icon" aria-hidden="true">
+            <label className="search-icon" htmlFor="dictionary-query">
               Search
-            </span>
+            </label>
             <input
+              id="dictionary-query"
               value={query}
               onChange={(event) => handleSearchChange(event.target.value)}
               onKeyDown={(event) => {
@@ -134,7 +164,7 @@ export function App() {
                   handleLookup(query)
                 }
               }}
-              placeholder="Search words, forms, phrases, or fuzzy matches"
+              placeholder="Search a word, phrase, form, or fuzzy match"
               type="search"
             />
             <button className="search-commit" onClick={() => handleLookup(query)} type="button">
@@ -142,9 +172,15 @@ export function App() {
             </button>
           </div>
 
-          <div className="status-row">
-            <span>{status}</span>
-            <span>{suggestions.length} suggestions</span>
+          <div className="trending-row">
+            <span className="trending-label">Trending</span>
+            <div className="trending-pills">
+              {trendingWords.map((item) => (
+                <button key={item.text} className="trending-pill" onClick={() => handleLookup(item.text)} type="button">
+                  {item.text}
+                </button>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -152,7 +188,7 @@ export function App() {
           <section className="panel-card results-panel">
             <div className="section-heading">
               <span className="eyebrow">Suggestions</span>
-              <span className="muted-label">Fuzzy search + headword matches</span>
+              <span className="muted-label">{suggestions.length} matches</span>
             </div>
 
             <div className="results-list">
@@ -163,7 +199,7 @@ export function App() {
                   onClick={() => handleLookup(item.text)}
                   type="button"
                 >
-                  <div>
+                  <div className="result-copy">
                     <strong>{item.text}</strong>
                     <span>{item.preview}</span>
                   </div>
@@ -176,40 +212,66 @@ export function App() {
             </div>
           </section>
 
-          <section className="panel-card article-panel">
-            <div className="article-header">
-              <div>
-                <p className="eyebrow">Article</p>
-                <h3>{article.word}</h3>
-                <div className="article-meta">
-                  <span>{article.pronunciation}</span>
-                  <span>{article.level}</span>
-                  <span>{article.partOfSpeech}</span>
+          <section className="article-column">
+            <section className="panel-card article-panel">
+              <div className="article-kicker">
+                <div>
+                  <p className="eyebrow">Entry</p>
+                  <h3>{article.word}</h3>
+                </div>
+                <div className="article-actions">
+                  <button className="ghost-action" type="button">
+                    Add to notebook
+                  </button>
+                  <button className="ghost-action" type="button">
+                    Make flashcard
+                  </button>
                 </div>
               </div>
 
-              <div className="article-actions">
-                <button className="ghost-action" type="button">
-                  Add to notebook
-                </button>
-                <button className="ghost-action" type="button">
-                  Make flashcard
-                </button>
+              <div className="article-meta">
+                <span>{article.pronunciation || 'Pronunciation pending'}</span>
+                <span>{article.level}</span>
+                <span>{article.partOfSpeech}</span>
               </div>
-            </div>
 
-            <div className="source-chips">
-              {article.dictionaries.map((dictionary) => (
-                <span key={dictionary} className="source-chip">
-                  {dictionary}
-                </span>
-              ))}
-            </div>
+              <div className="source-chips">
+                {article.dictionaries.map((dictionary) => (
+                  <span key={dictionary} className="source-chip">
+                    {dictionary}
+                  </span>
+                ))}
+              </div>
 
-            <article
-              className="article-html"
-              dangerouslySetInnerHTML={{ __html: article.html }}
-            />
+              <article className="article-html" dangerouslySetInnerHTML={{ __html: article.html }} />
+            </section>
+
+            <aside className="article-rail">
+              <section className="panel-card">
+                <div className="section-heading">
+                  <span className="eyebrow">Word tools</span>
+                </div>
+                <ul className="tool-list">
+                  <li>Collect entry to notebook</li>
+                  <li>Generate flashcard from definition</li>
+                  <li>Keep pronunciation and example blocks together</li>
+                </ul>
+              </section>
+
+              <section className="panel-card">
+                <div className="section-heading">
+                  <span className="eyebrow">Sources</span>
+                </div>
+                <div className="source-list">
+                  {article.dictionaries.map((dictionary) => (
+                    <div key={dictionary} className="source-row">
+                      <strong>{dictionary}</strong>
+                      <span>Active</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </aside>
           </section>
         </section>
       </main>

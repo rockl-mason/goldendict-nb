@@ -1,12 +1,12 @@
 #pragma once
 
-#include <QMainWindow>
+#include <QWidget>
 
 class QWebChannel;
 class QWebEngineView;
 class WebShellBridge;
 
-class WebShellWindow: public QMainWindow
+class WebShellWindow: public QWidget
 {
   Q_OBJECT
 

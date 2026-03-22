@@ -70,6 +70,7 @@
 #include <QGuiApplication>
 #include <QWebEngineSettings>
 #include <QProxyStyle>
+#include <QStackedWidget>
 
 #ifdef WITH_X11
   #include <X11/Xlib.h>
@@ -225,6 +226,14 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
   if ( auto * shellLayout = qobject_cast< QHBoxLayout * >( ui.centralWidget->layout() ) ) {
     shellLayout->setContentsMargins( 10, 10, 10, 10 );
     shellLayout->setSpacing( 10 );
+
+    workspaceStack = new QStackedWidget( ui.centralWidget );
+    workspaceStack->setObjectName( "workspaceStack" );
+
+    shellLayout->removeWidget( ui.tabWidget );
+    workspaceStack->addWidget( ui.tabWidget );
+    workspaceStack->setCurrentWidget( ui.tabWidget );
+    shellLayout->addWidget( workspaceStack );
   }
 
   // Set own gesture recognizers
@@ -267,6 +276,10 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
   translateBox->setSizePolicy( QSizePolicy::Expanding, QSizePolicy::MinimumExpanding );
   translateBoxLayout->addWidget( translateBox, 1 );
 
+  openWebUiPreviewAction = new QAction( QIcon( ":/icons/webdict.svg" ), tr( "Web UI Mode" ), this );
+  openWebUiPreviewAction->setCheckable( true );
+  connect( openWebUiPreviewAction, &QAction::toggled, this, &MainWindow::setWebUiMode );
+
   QWidget * workspaceSwitches    = new QWidget( navToolbar );
   auto * workspaceSwitchesLayout = new QHBoxLayout( workspaceSwitches );
   workspaceSwitches->setObjectName( "workspaceSwitches" );
@@ -289,6 +302,7 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
   addDockToggleButton( ui.searchPane->toggleViewAction(), ":/icons/system-search.svg", "toggleSearchDockButton" );
   addDockToggleButton( ui.dictsPane->toggleViewAction(), ":/icons/book.svg", "toggleResultsDockButton" );
   addDockToggleButton( ui.favoritesPane->toggleViewAction(), ":/icons/star.svg", "toggleFavoritesDockButton" );
+  addDockToggleButton( openWebUiPreviewAction, ":/icons/webdict.svg", "toggleWebUiModeButton" );
   translateBoxLayout->addWidget( workspaceSwitches, 0 );
 
   translateBoxToolBarAction = navToolbar->addWidget( translateBoxWidget );
@@ -359,8 +373,6 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
   menuButtonAction = navToolbar->addWidget( menuButton );
   menuButtonAction->setVisible( true );
 
-  openWebUiPreviewAction = new QAction( tr( "Web UI Preview" ), this );
-  connect( openWebUiPreviewAction, &QAction::triggered, this, &MainWindow::showWebUiPreview );
   ui.menuView->addSeparator();
   ui.menuView->addAction( openWebUiPreviewAction );
   buttonMenu->insertAction( ui.menu_Help->menuAction(), openWebUiPreviewAction );
@@ -1060,6 +1072,9 @@ void MainWindow::updateMatchResults( bool finished )
   }
 
   syncWebShellSuggestions();
+  if ( finished ) {
+    syncWebShellStatus( tr( "%1 suggestions ready" ).arg( results.size() ) );
+  }
 }
 
 void MainWindow::refreshTranslateLine()
@@ -2074,6 +2089,8 @@ void MainWindow::showStatusBarMessage( const QString & message, int timeout, con
   else {
     mainStatusBar->showMessage( message, timeout, icon );
   }
+
+  syncWebShellStatus( message.isEmpty() ? tr( "Ready" ) : message );
 }
 
 void MainWindow::tabSwitched( int )
@@ -2112,7 +2129,11 @@ void MainWindow::ensureWebShellWindow()
     return;
   }
 
-  webShellWindow = new WebShellWindow( this );
+  webShellWindow = new WebShellWindow( workspaceStack != nullptr ? static_cast< QWidget * >( workspaceStack )
+                                                                 : static_cast< QWidget * >( this ) );
+  if ( workspaceStack != nullptr ) {
+    workspaceStack->addWidget( webShellWindow );
+  }
   webShellWindow->bridge()->setBootstrapHandler( [ this ]() {
     syncWebShellState();
   } );
@@ -2213,13 +2234,31 @@ void MainWindow::syncWebShellState()
   syncWebShellArticle();
 }
 
-void MainWindow::showWebUiPreview()
+void MainWindow::syncWebShellStatus( const QString & status )
 {
-  ensureWebShellWindow();
-  syncWebShellState();
-  webShellWindow->show();
-  webShellWindow->raise();
-  webShellWindow->activateWindow();
+  if ( webShellWindow == nullptr ) {
+    return;
+  }
+
+  webShellWindow->bridge()->setStatus( status );
+}
+
+void MainWindow::setWebUiMode( bool enabled )
+{
+  if ( workspaceStack == nullptr ) {
+    return;
+  }
+
+  if ( enabled ) {
+    ensureWebShellWindow();
+    syncWebShellState();
+    workspaceStack->setCurrentWidget( webShellWindow );
+    syncWebShellStatus( tr( "Web UI mode active" ) );
+  }
+  else {
+    workspaceStack->setCurrentWidget( ui.tabWidget );
+    syncWebShellStatus( tr( "Native article mode active" ) );
+  }
 }
 
 void MainWindow::tabMenuRequested( QPoint pos )
@@ -2599,6 +2638,7 @@ void MainWindow::translateInputChanged( const QString & newValue )
   // Save translate line text. Later it can be passed to external applications.
   GlobalBroadcaster::instance()->translateLineText = newValue;
   syncWebShellQuery();
+  syncWebShellStatus( newValue.trimmed().isEmpty() ? tr( "Ready" ) : tr( "Searching..." ) );
 }
 
 void MainWindow::updateSuggestionList()
