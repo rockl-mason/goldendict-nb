@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="/webui/dist">
+    <file>dist/index.html</file>
+    <file>dist/assets/app.css</file>
+    <file>dist/assets/app.js</file>
+  </qresource>
+</RCC>

@@ -130,6 +130,7 @@ target_sources(${GOLDENDICT} PRIVATE
         resources.qrc
         src/scripts/scripts.qrc
         src/stylesheets/css.qrc
+        src/webui/webui.qrc
         ${ALL_SOURCE_FILES}
         ${MACOS_SOURCE_FILES}
         ${MACOS_APP_ICON}

@@ -4,6 +4,7 @@
 #pragma once
 
 #include <QSystemTrayIcon>
+#include <QVariantMap>
 #include <functional>
 #include "ui_mainwindow.h"
 #include "config.hh"
@@ -34,6 +35,8 @@
 
 using std::string;
 using std::vector;
+
+class WebShellWindow;
 
 class MainWindow: public QMainWindow
 {
@@ -118,6 +121,7 @@ private:
   //List that contains indexes of tabs arranged in a most-recently-used order
   QList< QWidget * > mruList;
   QToolButton addTab, *tabListButton;
+  QAction * openWebUiPreviewAction = nullptr;
   Config::Class & cfg;
   Config::Events configEvents;
   History history;
@@ -161,6 +165,7 @@ private:
   FTS::FullTextSearchDialog * ftsDlg;
 
   QIcon starIcon, blueStarIcon;
+  WebShellWindow * webShellWindow = nullptr;
 
   LocalSchemeHandler * localSchemeHandler;
   ResourceSchemeHandler * resourceSchemeHandler;
@@ -252,6 +257,12 @@ private:
   void setInputLineText( QString text, WildcardPolicy wildcardPolicy, TranslateBoxPopup popupAction );
 
   void changeWebEngineViewFont() const;
+  void ensureWebShellWindow();
+  void syncWebShellQuery();
+  void syncWebShellSuggestions();
+  void syncWebShellArticle();
+  void syncWebShellState();
+  QVariantMap makeEmptyWebShellArticle() const;
 
   void errorMessageOnStatusBar( const QString & errStr );
   int getIconSize();
@@ -441,6 +452,7 @@ private slots:
   void storeResourceSavePath( const QString & );
 
   void closeHeadwordsDialog();
+  void showWebUiPreview();
 
   /// Handle translate selected text from ArticleView
   void handleTranslateSelectedText( const QString & word, const QUrl & url, const QString & currentArticle );

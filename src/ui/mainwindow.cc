@@ -8,6 +8,7 @@
 
 #include "mainwindow.hh"
 #include "logger.hh"
+#include "webshellwindow.hh"
 #include <QWebEngineProfile>
 #include "edit_dictionaries.hh"
 #include "dict/loaddictionaries.hh"
@@ -39,6 +40,7 @@
 #include <QStyleFactory>
 #include <QStyleHints>
 #include <QNetworkProxyFactory>
+#include <QVariantList>
 
 #include "weburlrequestinterceptor.hh"
 #include "folding.hh"
@@ -355,6 +357,12 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
 
   menuButtonAction = navToolbar->addWidget( menuButton );
   menuButtonAction->setVisible( true );
+
+  openWebUiPreviewAction = new QAction( tr( "Web UI Preview" ), this );
+  connect( openWebUiPreviewAction, &QAction::triggered, this, &MainWindow::showWebUiPreview );
+  ui.menuView->addSeparator();
+  ui.menuView->addAction( openWebUiPreviewAction );
+  buttonMenu->insertAction( ui.menu_Help->menuAction(), openWebUiPreviewAction );
 
   // Make the search pane's titlebar
   groupListInDock = new GroupComboBox( &searchPaneTitleBar );
@@ -1049,6 +1057,8 @@ void MainWindow::updateMatchResults( bool finished )
                                  QPixmap( ":/icons/error.svg" ) );
     }
   }
+
+  syncWebShellSuggestions();
 }
 
 void MainWindow::refreshTranslateLine()
@@ -2052,6 +2062,7 @@ void MainWindow::pageLoaded( ArticleView * view )
 
   updateBackForwardButtons();
   updatePronounceAvailability();
+  syncWebShellArticle();
 }
 
 void MainWindow::showStatusBarMessage( const QString & message, int timeout, const QPixmap & icon )
@@ -2090,6 +2101,124 @@ void MainWindow::tabSwitched( int )
   if ( view ) {
     groupList->setCurrentGroup( view->getCurrentGroupId() );
   }
+
+  syncWebShellState();
+}
+
+void MainWindow::ensureWebShellWindow()
+{
+  if ( webShellWindow != nullptr ) {
+    return;
+  }
+
+  webShellWindow = new WebShellWindow( this );
+  webShellWindow->bridge()->setBootstrapHandler( [ this ]() {
+    syncWebShellState();
+  } );
+  webShellWindow->bridge()->setSearchHandler( [ this ]( const QString & query ) {
+    setInputLineText( query, WildcardPolicy::EscapeWildcards, NoPopupChange );
+    syncWebShellQuery();
+    syncWebShellSuggestions();
+  } );
+  webShellWindow->bridge()->setLookupHandler( [ this ]( const QString & word ) {
+    setInputLineText( word, WildcardPolicy::EscapeWildcards, NoPopupChange );
+    respondToTranslationRequest( word, false, QString(), false );
+    syncWebShellState();
+  } );
+  webShellWindow->bridge()->setStatus( tr( "Web UI bridge ready" ) );
+}
+
+void MainWindow::syncWebShellQuery()
+{
+  if ( webShellWindow == nullptr ) {
+    return;
+  }
+
+  webShellWindow->bridge()->setQuery( translateLine != nullptr ? translateLine->text() : QString() );
+}
+
+void MainWindow::syncWebShellSuggestions()
+{
+  if ( webShellWindow == nullptr ) {
+    return;
+  }
+
+  QVariantList suggestions;
+  const WordFinder::SearchResults & results = wordFinder.getResults();
+  suggestions.reserve( static_cast< int >( results.size() ) );
+
+  for ( const auto & result : results ) {
+    QVariantMap item;
+    item.insert( QStringLiteral( "text" ), result.first );
+    item.insert( QStringLiteral( "preview" ), tr( "Dictionary suggestion ready for lookup" ) );
+    item.insert( QStringLiteral( "badge" ), result.second ? tr( "Approx" ) : tr( "Exact" ) );
+    item.insert( QStringLiteral( "uncertain" ), result.second );
+    suggestions.push_back( item );
+  }
+
+  webShellWindow->bridge()->setSuggestions( suggestions );
+}
+
+QVariantMap MainWindow::makeEmptyWebShellArticle() const
+{
+  QVariantMap article;
+  article.insert( QStringLiteral( "word" ), tr( "No article loaded" ) );
+  article.insert( QStringLiteral( "pronunciation" ), QString() );
+  article.insert( QStringLiteral( "level" ), QStringLiteral( "Preview" ) );
+  article.insert( QStringLiteral( "partOfSpeech" ), QStringLiteral( "status" ) );
+  article.insert( QStringLiteral( "dictionaries" ), QStringList() );
+  article.insert( QStringLiteral( "html" ),
+                  tr( "<section class=\"entry-block\"><p class=\"entry-label\">Waiting</p><h4>Search for a word to preview the embedded article.</h4></section>" ) );
+  return article;
+}
+
+void MainWindow::syncWebShellArticle()
+{
+  if ( webShellWindow == nullptr ) {
+    return;
+  }
+
+  ArticleView * view = getCurrentArticleView();
+  if ( view == nullptr ) {
+    webShellWindow->bridge()->setArticle( makeEmptyWebShellArticle() );
+    return;
+  }
+
+  QVariantMap article;
+  article.insert( QStringLiteral( "word" ), view->getCurrentWord().isEmpty() ? view->getTitle() : view->getCurrentWord() );
+  article.insert( QStringLiteral( "pronunciation" ), QString() );
+  article.insert( QStringLiteral( "level" ), QStringLiteral( "Live" ) );
+  article.insert( QStringLiteral( "partOfSpeech" ), view->isWebsite() ? tr( "website" ) : tr( "dictionary article" ) );
+  article.insert( QStringLiteral( "dictionaries" ), view->getArticlesList() );
+
+  view->toHtml( [ this, article ]( QString & html ) mutable {
+    if ( webShellWindow == nullptr ) {
+      return;
+    }
+
+    article.insert( QStringLiteral( "html" ), html );
+    webShellWindow->bridge()->setArticle( article );
+  } );
+}
+
+void MainWindow::syncWebShellState()
+{
+  if ( webShellWindow == nullptr ) {
+    return;
+  }
+
+  syncWebShellQuery();
+  syncWebShellSuggestions();
+  syncWebShellArticle();
+}
+
+void MainWindow::showWebUiPreview()
+{
+  ensureWebShellWindow();
+  syncWebShellState();
+  webShellWindow->show();
+  webShellWindow->raise();
+  webShellWindow->activateWindow();
 }
 
 void MainWindow::tabMenuRequested( QPoint pos )
@@ -2468,6 +2597,7 @@ void MainWindow::translateInputChanged( const QString & newValue )
   updateSuggestionList( newValue );
   // Save translate line text. Later it can be passed to external applications.
   GlobalBroadcaster::instance()->translateLineText = newValue;
+  syncWebShellQuery();
 }
 
 void MainWindow::updateSuggestionList()
