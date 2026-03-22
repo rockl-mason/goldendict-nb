@@ -77,14 +77,30 @@ jobs:
 
           package_base="$(basename "$(ls ./build_dir/*.7z | head -n 1)" .7z)"
           prefix="${ARTIFACT_PREFIX}"
+          package_root=""
 
-          cp "./build_dir/goldendict/goldendict.exe" "./build_dir/${prefix}-portable.exe"
           mv "./build_dir/${package_base}.7z" "./build_dir/${prefix}-installer.7z"
           mv "./build_dir/${package_base}.exe" "./build_dir/${prefix}-installer.exe"
 
+          for candidate_root in ./build_dir/_CPack_Packages/win64/7Z ./build_dir/_CPack_Packages/win64/NSIS64; do
+            if [ -d "${candidate_root}" ]; then
+              candidate_dir="$(find "${candidate_root}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+              if [ -n "${candidate_dir}" ]; then
+                package_root="${candidate_dir}"
+                break
+              fi
+            fi
+          done
+
+          if [ -z "${package_root}" ]; then
+            echo "Unable to find deployed CPack package directory" >&2
+            exit 1
+          fi
+
           portable_dir="./build_dir/${prefix}-portable"
+          rm -rf "${portable_dir}"
           mkdir -p "${portable_dir}"
-          cp -R ./build_dir/goldendict/. "${portable_dir}/"
+          cp -R "${package_root}/." "${portable_dir}/"
           (
             cd ./build_dir
             7z a -tzip "${prefix}-portable.zip" "./${prefix}-portable/*"
@@ -106,7 +122,6 @@ jobs:
             ./build_dir/*-installer.exe
             ./build_dir/*-installer.7z
             ./build_dir/*-portable.zip
-            ./build_dir/*-portable.exe
             ./build_dir/*.pdb
 
       - name: Write summary
@@ -120,5 +135,5 @@ jobs:
             echo "- Download: Actions -> this run -> Artifacts"
             echo
             echo "### Files"
-            ls ./build_dir/*-installer.exe ./build_dir/*-installer.7z ./build_dir/*-portable.zip ./build_dir/*-portable.exe ./build_dir/*.pdb 2>/dev/null | sed 's#^#- `#; s#$#`#'
+            ls ./build_dir/*-installer.exe ./build_dir/*-installer.7z ./build_dir/*-portable.zip ./build_dir/*.pdb 2>/dev/null | sed 's#^#- `#; s#$#`#'
           } >> "$GITHUB_STEP_SUMMARY"
